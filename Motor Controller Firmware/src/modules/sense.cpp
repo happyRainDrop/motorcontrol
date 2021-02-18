@@ -42,23 +42,49 @@ int it = 1;
 int mpptDuty = 20;
 int lastMPPTduty = 20;
 int dD;
-bool powerSupply = true;
+// stuff for tachometer
+float rpm = 0;
+float lastRPM = 0;
+float dR = 0;
+long lastRPMTime = 0;
+long dTRPM = 1;
+long lastTorqueTime = 0;
+long dTTorque = 1;
+float momentOfIntertia = 0.1129; 
+float torque = 0;
+long numInterrupts = -1;
+long lastNumInterrupts = 0;
+int telemetryUpdateMultiplier = 10; //how many times slower to update telemetry than input
+long telemetryCounter = 0;
+// simulate acceleration
+float targetRPM = 0;
+float targetDT = 1; // ms
+float acc = 5; // rad/s^2
 
 // Setup a oneWire instance to communicate with any OneWire device
 OneWire oneWire(ONE_WIRE_BUS);
 // Pass oneWire reference to DallasTemperature library
 DallasTemperature tempSensors(&oneWire);
 
-// Sense temperatures after conversions complete.
-NonBlockingTask tempUpdate(conversionTime);
-// Sense current every 10 milliseconds.
-NonBlockingTask iSenseUpdate(10);
-// Sense voltage every 10 milliseconds.
-NonBlockingTask vSenseUpdate(10);
-// Sense power every 10 milliseconds.
-NonBlockingTask pSenseUpdate(10);
-// Track MPP every 50 milliseconds.
-NonBlockingTask mpptUpdate(50);
+#if defined(MAX_POWER_POINT_TRACKING)
+  // Track MPP every 50 milliseconds.
+  NonBlockingTask mpptUpdate(50);
+  // Sense current every 10 milliseconds.
+  NonBlockingTask iSenseUpdate(10);
+  // Sense voltage every 10 milliseconds.
+  NonBlockingTask vSenseUpdate(10);
+  // Sense power every 10 milliseconds.
+  NonBlockingTask pSenseUpdate(10);
+#endif
+#if TESTING_MODE!=3
+  // Sense temperatures after conversions complete.
+  NonBlockingTask tempUpdate(conversionTime);
+#else
+  NonBlockingTask rpmUpdate(5);
+  #if SIMULATION_MODE==2
+    NonBlockingTask accelerateRPM(targetDT);
+  #endif
+#endif
 
 // Moving average uses last avgCount samples.
 RunningAverage movAvgCurrent(avgCount);
@@ -104,11 +130,11 @@ void senseCurrent() {
     // Update MA internal sum to prevent accumulating errors.
     iSenseVADC = movAvgCurrent.getAverage();
   }
-  if (powerSupply) {
-    current = conversionFactor * (iSenseVADC - zeroISenseVADC) * 19500;
-  } else {
+  #if TESTING_MODE==2 
     current = (duty / 100.0) * 7.77;
-  }
+  #else 
+    current = conversionFactor * (iSenseVADC - zeroISenseVADC) * 19500;
+  #endif
 }
 
 void senseVoltage() {
@@ -117,15 +143,19 @@ void senseVoltage() {
     vSenseADC += analogReadFast(VBAT);
   }
   vSenseADC /= 5;
-  if (powerSupply) {
-    voltage = vSenseADC * (44.8 / 1024);
-  } else {
+  #if TESTING_MODE==2 
     voltage = 13.0 * log(10 - current);
-  }
+  #else 
+    voltage = vSenseADC * (44.8 / 1024);
+  #endif
 }
 
 void sensePower() {
-  power = voltage * current * duty;
+  #if TESTING_MODE==2
+    power = voltage * current;
+  #else 
+    power = voltage * current * duty;
+  #endif
 }
 
 void trackMPP() {
@@ -167,4 +197,23 @@ void trackMPP() {
   }
   lastPower = power;
   lastMPPTduty = mpptDuty;
+}
+
+void trackTorque() {
+  dTTorque = micros()-lastTorqueTime;
+  dR = rpm - lastRPM;
+  if (dTTorque!=0) {
+    if (lastNumInterrupts!=numInterrupts && numInterrupts!=1) torque = momentOfIntertia * (dR * M_PI/30.0)/(dTTorque/1000000.0);
+  } else {
+    torque = 0;
+  }
+  lastRPM = rpm;
+  lastTorqueTime = micros();
+  lastNumInterrupts = numInterrupts;
+}
+
+// simulate acceleration
+void accelerate() { 
+  targetRPM+=(acc*targetDT/1000.0)*(30.0/M_PI);
+  dTRPM = 60000000.0/targetRPM;
 }

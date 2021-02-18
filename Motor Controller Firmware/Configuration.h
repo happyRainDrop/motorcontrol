@@ -31,6 +31,22 @@
 #define TELEMETRY 500000
 
 //===========================================================================
+//============================ Testing Options ==============================
+//===========================================================================
+/**
+ * Tells us what kind of testing we are doing
+ * 
+ *   1 : no testing
+ *   2 : mppt simulation (watches how mppt behaves for simulated values of current and voltage)
+ *   3 : tachometer testing
+ *  
+ */
+#define TESTING_MODE 3
+#if TESTING_MODE==3 
+  #define SIMULATION_MODE 1 // 2 simulates acceleration, 1 for reading actual signals to pin 2
+#endif
+
+//===========================================================================
 //============================= Power Options ===============================
 //===========================================================================
 
@@ -43,7 +59,7 @@
  * -- Power supply voltage must NOT exceed 40V! --
  * 
  */
-#define POWER_SUPPLY 2
+#define POWER_SUPPLY 1
 
 //===========================================================================
 //============================= Input Options ===============================
@@ -55,9 +71,13 @@
  *   1 : 1 - 4V throttle
  *   2 : momentary push-button switch
  *   3 : self-test (loops target duty between 100% and 0% for ramp times)
+ *   4 : constant rpm
  * 
  */
-#define INPUT_DEVICE 3
+#define INPUT_DEVICE 4
+#if INPUT_DEVICE == 4
+  #define CONSTANT_DUTY 10
+#endif
 
 //===========================================================================
 //============================= Output Options ==============================

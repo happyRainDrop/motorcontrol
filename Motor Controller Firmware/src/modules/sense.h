@@ -44,7 +44,24 @@ extern int it;             // increment or decrement of duty
 extern int mpptDuty;       // (%)
 extern int lastDuty;       // (%)
 extern int dD;
-extern bool powerSupply;   // if false, means no power supply is connected (simulation)
+
+extern float rpm;
+extern float lastRPM;
+extern float dR; // delta rpm
+extern long lastRPMTime;
+extern long dTRPM; // difference in time between two interrupts;
+extern long lastTorqueTime;
+extern long dTTorque; // difference in time between two rpm readings
+extern float momentOfIntertia; // kg*m^2
+extern float torque;
+extern long numInterrupts;
+extern long lastNumInterrupts;
+extern int telemetryUpdateMultiplier;
+extern long telemetryCounter;
+
+extern float targetRPM;
+extern float targetDT; // ms
+extern float acc; // rad/s^2
 
 extern OneWire oneWire;
 extern DallasTemperature tempSensors;
@@ -54,6 +71,9 @@ extern NonBlockingTask iSenseUpdate;
 extern NonBlockingTask vSenseUpdate;
 extern NonBlockingTask pSenseUpdate;
 extern NonBlockingTask mpptUpdate;
+extern NonBlockingTask rpmUpdate;
+extern NonBlockingTask torqueUpdate;
+extern NonBlockingTask accelerateRPM;
 
 extern RunningAverage movAvgCurrent;
 
@@ -65,3 +85,5 @@ void senseCurrent();
 void senseVoltage();
 void sensePower();
 void trackMPP();
+void trackTorque();
+void accelerate();

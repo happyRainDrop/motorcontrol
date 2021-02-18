@@ -20,8 +20,10 @@
 
 StaticJsonDocument<128> boatData;
 
-// Send telemetry at 10 Hz.
-NonBlockingTask telemetryUpdate(100);
+#if TESTING_MODE!=3
+  // Send telemetry at 10 Hz.
+  NonBlockingTask telemetryUpdate(10);
+#endif
 
 void configureSerial() {
   Serial.begin(TELEMETRY);
@@ -29,6 +31,16 @@ void configureSerial() {
 }
 
 void sendData() {
+  boatData["time(ms)"] = millis();
+  #if TESTING_MODE==3 
+    boatData["lastRPMTime"] = lastRPMTime;
+    boatData["numInterrupts"] = numInterrupts;
+    boatData["rpm"] = rpm;
+    boatData["torque"] = torque;
+  #elif TESTING_MODE==2
+    boatData["throttleDuty"] = throttleDuty;
+    boatData["mpptDuty"] = mpptDuty;
+  #endif
   boatData["throttlePercent"] = targetDuty;
   boatData["dutyPercent"] = duty;
   boatData["pwmFrequency"] = F_CPU / (cpuPrescaler * pwmResolution);
